@@ -70,7 +70,6 @@ for i in range(10000):
     print "step:", i, "mean loss", np.mean(_losses), "min loss", np.min(_losses)
     #print "perc embed:", np.around(_perc_embed,decimals=2)
 
-#print sess.run([p])[0]
 
 
 
