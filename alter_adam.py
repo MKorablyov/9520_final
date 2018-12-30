@@ -37,6 +37,7 @@ def perceptron_embedding(sizes,sess,coord):
         Ws.append(w)
     return top_layer,Ws
 
+
 def actcentron_embedding(sizes,sess,coord,output_range=3):
     # init network (first 2 layers)
     # fixme changed the original implementation
@@ -58,13 +59,64 @@ def actcentron_embedding(sizes,sess,coord,output_range=3):
     act = output_range * tf.nn.tanh(scaling_const * top_layer)
     return act,Ws
 
+
+def indep_embedding(sizes,sess,coord,output_range=3):
+    # init network (first 2 layers)
+    # fixme changed the original implementation
+    Ws = []
+    top_layer = tf.get_variable("perc_embed",
+                                shape=[sizes[0],sizes[1]],
+                                initializer=tf.contrib.layers.xavier_initializer())
+    Ws.append(top_layer)
+    #for i in range(1, len(sizes) - 1):
+    #    name = "perceptron_fc" + str(i)
+    #    shape = [sizes[i],sizes[i+1]]
+    #    w = tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer())
+    #    top_layer = tf.nn.relu(tf.matmul(top_layer,w))
+    #    Ws.append(w)
+    sess.run(tf.global_variables_initializer()) # FIXME: I need to initialize each of the weights separately
+    tf.train.start_queue_runners(sess,coord)
+    scaling = 1.7159 / tf.maximum(tf.abs(tf.reduce_max(top_layer)), tf.abs(tf.reduce_min(top_layer)))
+    scaling_const = sess.run(scaling)
+    act = output_range * tf.nn.tanh(scaling_const * top_layer)
+    return act,Ws
+
+
+
+def embed_fc_tanh(layer_depths,layer_acts,sess,coord,output_range=3):
+    "generic embedding of fully-connected layers and tg activation"
+    # todo; use get_variable so that it is possible to run on the testing set
+    # FIXME: I need to initialize each of the weights separately
+    Ws = []
+    # initialize layer 0 is special
+    top_layer = tf.get_variable("embedding_fc_0",
+                                shape=[layer_depths[0],layer_depths[1]],
+                                initializer=tf.contrib.layers.xavier_initializer())
+    Ws.append(top_layer)
+    # initialize all other layers
+    for i in range(1, len(layer_depths) - 1):
+        name = "embedding_fc_" + str(i)
+        shape = [layer_depths[i],layer_depths[i+1]]
+        w = tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer())
+        top_layer = eval(layer_acts[i])(tf.matmul(top_layer,w))
+        Ws.append(w)
+    # initialize to help tanh nonlinearity to work
+    sess.run(tf.global_variables_initializer())
+    tf.train.start_queue_runners(sess,coord)
+    scaling_const = sess.run(1.7159 / tf.maximum(tf.abs(tf.reduce_max(top_layer)), tf.abs(tf.reduce_min(top_layer))))
+    top_layer = output_range * tf.nn.tanh(scaling_const * top_layer)
+    return top_layer,Ws
+
+
 def net3_embed1(X,fun_shape,em,em_shape,sess,coord):
-    "3-layer network with nonconvex embedding"
+    "3-layer network with embedding in the first layer"
     # [16,16,16,3]
-    # W [ batch, surface_dots, w_in, w_out]
+    # W [batch, surface_dots, w_in, w_out]
     l0 = tf.expand_dims(X, 1)
     W1,PWs = eval(em)(em_shape,sess=sess,coord=coord) # [120, 60, 256]
+
     W1 = tf.reshape(W1,[1,em_shape[0],fun_shape[0],fun_shape[1]]) # 16,16
+
     l1 = tf.reduce_sum(tf.expand_dims(l0,3) * W1,axis=2)
     l1_act = tf.nn.relu(l1)
     W2 = tf.get_variable("W2", shape=[fun_shape[1], fun_shape[2]],
@@ -75,6 +127,11 @@ def net3_embed1(X,fun_shape,em,em_shape,sess,coord):
                          initializer=tf.contrib.layers.xavier_initializer(),trainable=False)
     l3 = tf.reduce_sum(tf.expand_dims(l2_act, 3) * W3, axis=2)
     return X, l3, PWs + [W1,W2,W3]
+
+
+
+
+
 
 
 def _try_params(n_iterations,batch_size,fun_shape,em,em_shape,db_path,lr,optimizer,scheduler):
@@ -167,18 +224,3 @@ if __name__ == "__main__":
         np.savetxt(os.path.join(cfg.out_path,config_name + "_train_cost_hist_lr_" + str(lr)),train_cost_hist)
 
 
-# this does not work with a small dataset of 100
-# I am trying in 1 layer (it seems like with less parallels it converges faster and to a lower value) !!!
-# lowering the training rate works, but does not save me (for the mean value)
-# 32 0.86, e-05
-# 2 e-05, e-05 | e-08 e-08 and dropping
-# 252 0.54, e-07
-
-# idea:
-# I need to build a deep function (let's say of 3 layers exactly)
-# the loss is L2
-
-# the last two layers are fixed (let's make them random)
-# the bottom layer is trainable
-# the activation is ReLU
-# the output could be a single number/many numbers

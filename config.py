@@ -1169,3 +1169,10 @@ class cfg4_39:
     scheduler = "none"
     # optimizer
     optimizer = "tf.train.GradientDescentOptimizer"
+
+
+# embed layer 2 of the network
+# I need to initialize 0-sized embedding for the original problem to prov that stuff works!
+# change the loss from L2, to L2 on one-hot
+# change the shape to MNIST
+# change the data to MNIST

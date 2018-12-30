@@ -37,6 +37,10 @@ def perceptron(sizes):
         w = tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer())
         top_layer = tf.nn.relu(tf.matmul(top_layer,w))
     # rescale with tg activation
+
+
+
+
     return top_layer
     #a = 1.7159 / tf.maximum(tf.abs(tf.reduce_max(top_layer)), tf.abs(tf.reduce_min(top_layer)))
     #out = tf.math.tan(a * top_layer)
@@ -83,11 +87,5 @@ xv, yv = np.asarray(np.meshgrid(x, y),dtype=np.float32)
 zv = ackley(np.stack([xv,yv],axis=1))
 zv, = sess.run([zv])
 surf = ax.plot_surface(xv, yv, zv, rstride=1, cstride=1, cmap=cm.coolwarm, color='c', alpha=0.3, linewidth=0)
-#xys = network().detach().numpy()
-#zs = the_function(network()).detach().numpy()
-#print zs
-#ax.scatter(xys[:, 0], xys[:, 1], zs, color="k", s=20)
-#if not os.path.exists(os.path.join(args.save_dir, str(lr))): os.makedirs(os.path.join(args.save_dir, str(lr)))
-#plt.show()
 plt.savefig(os.path.join("/home/maksym/Desktop/slt/landscapes", "surf_" + ".png"))
 plt.close()
